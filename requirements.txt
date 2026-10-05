@@ -1,0 +1,2 @@
+# Projeto estático HTML/CSS/JavaScript: não há dependências Python para instalar.
+# As bibliotecas do dashboard (Chart.js, Font Awesome e Poppins) são carregadas por CDN.

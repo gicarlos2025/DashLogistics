@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashLogistics - Painel Integrado de Almoxarifado</title>
+    <!-- Carregando Chart.js e Ícones -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0b0f19;
+            --sidebar-bg: #101524;
+            --card-bg: #151a2e;
+            --card-border: rgba(255, 255, 255, 0.05);
+            --text-main: #e2e8f0;
+            --text-muted: #64748b;
+            --accent-cyan: #00d2ff;
+            --accent-pink: #f43f5e;
+            --accent-orange: #f59e0b;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Menu Lateral / Sidebar */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, var(--sidebar-bg) 0%, #080a10 100%);
+            padding: 30px 0;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--card-border);
+            box-shadow: 2px 0 15px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo i {
+            font-size: 38px;
+            color: var(--accent-cyan);
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.4));
+        }
+
+        .logo h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .logo h2 span { font-weight: 300; color: var(--text-muted); }
+
+        .nav-item {
+            padding: 14px 25px;
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            text-decoration: none;
+            margin: 5px 15px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-item i { margin-right: 15px; font-size: 1.1rem; width: 20px; text-align: center; }
+        .nav-item:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+        .nav-item.active {
+            color: #fff;
+            background: var(--accent-cyan);
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.25);
+        }
+
+        /* Área de Conteúdo */
+        .main-content {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .date-picker {
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+            overflow: hidden;
+        }
+
+        .date-picker select {
+            background: transparent;
+            border: 0;
+            color: var(--text-main);
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.85rem;
+            padding: 8px 16px;
+        }
+
+        .date-picker option {
+            background: var(--card-bg);
+            color: var(--text-main);
+        }
+
+        .week-segments {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(120px, 1fr));
+            gap: 12px;
+            margin: 0 0 20px;
+        }
+        .week-segments.is-hidden { display: none; }
+
+        .week-pill {
+            background: rgba(0, 210, 255, 0.06);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .week-pill:hover {
+            transform: translateY(-1px);
+            background: rgba(0, 210, 255, 0.1);
+        }
+
+        .week-pill.active {
+            background: rgba(0, 210, 255, 0.14);
+            border-color: rgba(0, 210, 255, 0.55);
+            box-shadow: 0 0 0 1px rgba(0, 210, 255, 0.2);
+        }
+
+        .week-pill strong {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--accent-cyan);
+            margin-bottom: 2px;
+        }
+
+        .week-pill span {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-reset:hover { background: rgba(255, 255, 255, 0.2); }
+
+        /* Sistema de Páginas (Views) */
+        .page {
+            display: none;
+            flex: 1;
+            animation: fadeIn 0.3s ease;
+        }
+        .page.active {
+            display: flex;
+            flex-direction: column;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Grade de Cards Principais */
+        .top-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: linear-gradient(145deg, var(--card-bg) 0%, #0d111d 100%);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 22px;
+            position: relative;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+
+        .card-highlight { background: linear-gradient(145deg, #2a1538 0%, var(--card-bg) 100%); }
+
+        .card-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .card-value { font-size: 1.7rem; font-weight: 600; color: #fff; }
+        .card-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 5px; }
+
+        .card-icon {
+            position: absolute;
+            top: 22px;
+            right: 22px;
+            color: rgba(255,255,255,0.15);
+            font-size: 1.4rem;
+        }
+
+        .roi-circle {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            border: 3px solid var(--accent-pink);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.3);
+        }
+        .roi-circle span { font-size: 1.1rem; font-weight: 600; color: #fff; }
+        .roi-circle small { font-size: 0.5rem; color: var(--text-muted); }
+
+        /* Grades de Gráficos (Linha 1) */
+        .charts-row-1 {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .chart-container {
+            background: linear-gradient(145deg, var(--card-bg) 0%, #0d111d 100%);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            height: 300px;
+            position: relative;
+        }
+
+        .chart-header { margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .chart-header span {
+            display: inline-block; width: 14px; height: 14px; background: var(--accent-cyan); border-radius: 3px;
+        }
+        .chart-header h3 { font-size: 0.9rem; font-weight: 500; color: var(--text-main); }
+
+        .pie-charts-wrapper {
+            display: flex;
+            justify-content: space-around;
+            height: calc(100% - 40px);
+            align-items: center;
+        }
+        .pie-container { width: 45%; height: 100%; position: relative; }
+
+        /* Grades de Gráficos (Linha 2) */
+        .charts-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            height: 280px;
+        }
+
+        .critical-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: calc(100% - 30px);
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 210, 255, 0.03);
+            border-left: 3px solid var(--accent-pink);
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+        .list-item:hover { background: rgba(244, 63, 94, 0.1); transform: translateX(5px); }
+
+        .item-info h4 { font-size: 0.75rem; color: #fff; font-weight: 500; }
+        .item-info p { font-size: 0.65rem; color: var(--text-muted); }
+        .item-value { text-align: right; }
+        .item-value h4 { font-size: 0.85rem; color: var(--accent-pink); }
+
+        .bottom-right {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 20px;
+            height: calc(100% - 30px);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            align-content: center;
+        }
+
+        .metric-box h4 { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+        .metric-box h2 { font-size: 1.1rem; color: #fff; font-weight: 500; }
+        .metric-box span { font-size: 0.6rem; color: var(--accent-green); }
+        .metric-box span.down { color: var(--accent-pink); }
+
+        .line-wrap { position: relative; height: 100%; width: 100%; }
+
+        /* Estilo das Novas Planilhas e Tabelas Dinâmicas */
+        .table-card {
+            background: linear-gradient(145deg, var(--card-bg) 0%, #0d111d 100%);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .table-responsive {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+        th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            padding: 12px 15px;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(5px);
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--card-border);
+            color: var(--text-main);
+        }
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+        /* Badges de Status Personalizados */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; }
+        .badge-normal { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .badge-critico { background: rgba(244, 63, 94, 0.15); color: var(--accent-pink); }
+        .badge-recebido { background: rgba(0, 210, 255, 0.15); color: var(--accent-cyan); }
+        .badge-conferencia { background: rgba(245, 158, 11, 0.15); color: var(--accent-orange); }
+        .badge-transporte { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar / Menu Lateral -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fa-solid fa-boxes-stacked"></i>
+            <h2>Dash<span>Logistics</span></h2>
+        </div>
+        <a class="nav-item active" data-target="view-dashboard"><i class="fa-solid fa-binoculars"></i> Visão Geral</a>
+        <a class="nav-item" data-target="view-entradas"><i class="fa-solid fa-bolt"></i> Entradas / Recebimento</a>
+        <a class="nav-item" data-target="view-saidas"><i class="fa-solid fa-truck-ramp-box"></i> Saídas / Expedição</a>
+        <a class="nav-item" data-target="view-inventario"><i class="fa-solid fa-cubes"></i> Inventário Geral</a>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="main-content">
+        
+        <!-- Header -->
+        <div class="header">
+            <div class="date-picker">
+                <select id="month-select" aria-label="Selecionar mês dos dados">
+                     <option value="2026-09">01 a 30 de setembro de 2026</option>
+                     <option value="2026-10" selected>01 a 31 de outubro de 2026</option>
+                </select>
+            </div>
+            <button class="btn-reset" onclick="location.reload();">RESET</button>
+        </div>
+
+        <div id="week-segments" class="week-segments"></div>
+
+        <!-- ================= VISÃO GERAL (DASHBOARD) ================= -->
+        <div id="view-dashboard" class="page active">
+            <!-- Cards de KPIs -->
+            <div class="top-cards">
+                <div class="card">
+                    <div class="card-title" id="kpi-valor-label">VALOR EM ESTOQUE (R$)</div>
+                    <div class="card-value" id="kpi-valor">R$ 759.965,64</div>
+                    <div class="card-sub" id="kpi-valor-sub">Base atualizada</div>
+                    <i class="fa-solid fa-hand-holding-dollar card-icon"></i>
+                </div>
+                <div class="card">
+                    <div class="card-title">TOTAL DE SKUs</div>
+                    <div class="card-value" id="kpi-skus">200</div>
+                    <div class="card-sub" id="kpi-skus-sub">Tipos de Materiais</div>
+                    <i class="fa-solid fa-layer-group card-icon"></i>
+                </div>
+                <div class="card">
+                    <div class="card-title" id="kpi-itens-label">QTD. TOTAL DE ITENS</div>
+                    <div class="card-value" id="kpi-itens">23.711</div>
+                    <div class="card-sub" id="kpi-itens-sub">Unidades Físicas (UN/CX/RL)</div>
+                    <i class="fa-solid fa-boxes-packing card-icon"></i>
+                </div>
+                <div class="card card-highlight">
+                    <div class="card-title">STATUS GERAL (CRÍTICOS)</div>
+                    <div class="card-value" id="status-label" style="font-size: 1.1rem; color: var(--text-muted); margin-top: 15px;">Atenção Imediata</div>
+                    <div class="roi-circle">
+                        <span id="kpi-critical-count">70</span>
+                        <small>Itens</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Linha 1 Gráficos -->
+            <div class="charts-row-1">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <span></span><h3>Valor de Movimentação por Categoria</h3>
+                    </div>
+                    <div style="height: calc(100% - 30px); width: 100%;">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header" style="justify-content: center; margin-bottom: 0;">
+                        <h3 style="font-size: 1.0rem; color: var(--text-muted);">Status do Estoque & Distribuição</h3>
+                    </div>
+                    <div class="pie-charts-wrapper">
+                        <div class="pie-container"><canvas id="pieChart1"></canvas></div>
+                        <div class="pie-container"><canvas id="pieChart2"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Linha 2 Gráficos e Infos -->
+            <div class="charts-row-2">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 style="color: var(--accent-pink);"><i class="fa-solid fa-triangle-exclamation"></i> Top 5 Itens Críticos</h3>
+                    </div>
+                    <div class="critical-list">
+                        <div class="list-item">
+                            <div class="item-info"><h4>Access Point Wi-Fi 6</h4><p>SKU-1089 | Qtd: 5</p></div>
+                            <div class="item-value"><h4>R$ 7.495,95</h4></div>
+                        </div>
+                        <div class="list-item">
+                            <div class="item-info"><h4>Garfo Empilhadeira 2A</h4><p>SKU-1164 | Qtd: 4</p></div>
+                            <div class="item-value"><h4>R$ 5.821,20</h4></div>
+                        </div>
+                        <div class="list-item">
+                            <div class="item-info"><h4>Palete PEAD Reforçado</h4><p>SKU-1032 | Qtd: 32</p></div>
+                            <div class="item-value"><h4>R$ 5.771,20</h4></div>
+                        </div>
+                        <div class="list-item">
+                            <div class="item-info"><h4>Papel A4 Report (Cx)</h4><p>SKU-1151 | Qtd: 17</p></div>
+                            <div class="item-value"><h4>R$ 4.064,19</h4></div>
+                        </div>
+                        <div class="list-item">
+                            <div class="item-info"><h4>Cinta Arquear PET 16mm</h4><p>SKU-1042 | Qtd: 17</p></div>
+                            <div class="item-value"><h4>R$ 2.407,20</h4></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="bottom-right">
+                        <div class="metrics-grid">
+                            <div class="metric-box">
+                                <h4>Qtd. de entradas</h4>
+                                <h2 id="metric-entries">0</h2>
+                            </div>
+                            <div class="metric-box">
+                                <h4>Qtd. de saídas</h4>
+                                <h2 id="metric-exits">0</h2>
+                            </div>
+                            <div class="metric-box">
+                                <h4>Valor movimentado</h4>
+                                <h2 id="metric-movement-value">R$ 0,00</h2>
+                            </div>
+                            <div class="metric-box">
+                                <h4>Movimentação mais recente</h4>
+                                <h2 id="metric-last-movement">—</h2>
+                            </div>
+                        </div>
+                        <div class="line-wrap">
+                            <h4 style="font-size: 1.0rem; color: var(--text-muted); position: absolute; left: 10px; top: -10px; transform: rotate(0deg); transform-origin: left bottom;">Valor movimentado por semana</h4>
+                            <canvas id="lineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PLANILHA: ENTRADAS / RECEBIMENTO ================= -->
+        <div id="view-entradas" class="page">
+            <div class="table-card">
+                <div class="chart-header">
+                    <span></span><h3>Planilha de Entradas e Recebimentos (MIGO / NFs)</h3>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>SKU</th>
+                                <th>Descrição do Material</th>
+                                <th>Qtd Recebida</th>
+                            </tr>
+                        </thead>
+                        <tbody data-operational-table="entradas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PLANILHA: SAÍDAS / EXPEDIÇÃO ================= -->
+        <div id="view-saidas" class="page">
+            <div class="table-card">
+                <div class="chart-header">
+                    <span></span><h3>Planilha de Saídas e Expedição (Ordens de Separação / Picking)</h3>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>SKU</th>
+                                <th>Descrição do Material</th>
+                                <th>Qtd Expedida</th>
+                            </tr>
+                        </thead>
+                        <tbody data-operational-table="saidas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PLANILHA: INVENTÁRIO GERAL ================= -->
+        <div id="view-inventario" class="page">
+            <div class="table-card">
+                <div class="chart-header">
+                    <span></span><h3>Base de Dados Consolidada do Inventário (CD)</h3>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código SKU</th>
+                                <th>Descrição do Material</th>
+                                <th>Endereço no CD</th>
+                                <th>Qtd Atual</th>
+                                <th>Valor Total (R$)</th>
+                                <th>Status do Estoque</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Importando o script separado -->
+    <script src="inventory-data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
